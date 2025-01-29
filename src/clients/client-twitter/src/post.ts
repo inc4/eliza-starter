@@ -12,7 +12,6 @@ import {
 } from "@elizaos/core";
 import { elizaLogger } from "@elizaos/core";
 import { ClientBase } from "./base.ts";
-import { postActionResponseFooter } from "@elizaos/core";
 import { generateTweetActions } from "@elizaos/core";
 import { IImageDescriptionService, ServiceType } from "@elizaos/core";
 import { buildConversationThread } from "./utils.ts";
@@ -75,8 +74,7 @@ Actions (respond only with tags):
 Tweet:
 {{currentTweet}}
 
-# Respond with qualifying action tags only. Default to NO action unless extremely confident of relevance.` +
-    postActionResponseFooter;
+# Respond with qualifying action tags only. Default to NO action unless extremely confident of relevance. Choose any combination of [LIKE], [RETWEET], [QUOTE], and [REPLY] that are appropriate. Each action must be on its own line. Your response must only include the chosen actions.`;
 
 interface PendingTweet {
     cleanedContent: string;
@@ -119,6 +117,9 @@ export class TwitterPostClient {
         );
         elizaLogger.log(
             `- Action Processing: ${this.client.twitterConfig.ENABLE_ACTION_PROCESSING ? "enabled" : "disabled"}`
+        );
+        elizaLogger.log(
+            `- Allowed actions: ${this.client.twitterConfig.TWITTER_ALLOWED_ACTIONS}`
         );
         elizaLogger.log(
             `- Action Interval: ${this.client.twitterConfig.ACTION_INTERVAL} minutes`
@@ -824,7 +825,7 @@ export class TwitterPostClient {
             try {
                 const executedActions: string[] = [];
                 // Execute actions
-                if (actionResponse.like) {
+                if (actionResponse.like && this.client.twitterConfig.TWITTER_ALLOWED_ACTIONS.includes("like")) {
                     if (this.isDryRun) {
                         elizaLogger.info(
                             `Dry run: would have liked tweet ${tweet.id}`
@@ -844,7 +845,7 @@ export class TwitterPostClient {
                     }
                 }
 
-                if (actionResponse.retweet) {
+                if (actionResponse.retweet && this.client.twitterConfig.TWITTER_ALLOWED_ACTIONS.includes("retweet")) {
                     if (this.isDryRun) {
                         elizaLogger.info(
                             `Dry run: would have retweeted tweet ${tweet.id}`
@@ -864,7 +865,7 @@ export class TwitterPostClient {
                     }
                 }
 
-                if (actionResponse.quote) {
+                if (actionResponse.quote && this.client.twitterConfig.TWITTER_ALLOWED_ACTIONS.includes("quote")) {
                     try {
                         // Build conversation thread for context
                         const thread = await buildConversationThread(
@@ -1007,7 +1008,7 @@ export class TwitterPostClient {
                     }
                 }
 
-                if (actionResponse.reply) {
+                if (actionResponse.reply && this.client.twitterConfig.TWITTER_ALLOWED_ACTIONS.includes("reply")) {
                     try {
                         await this.handleTextOnlyReply(
                             tweet,

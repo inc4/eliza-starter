@@ -22,6 +22,8 @@ const twitterUsernameSchema = z
         return /^[A-Za-z0-9_]+$/.test(username);
     }, "An X Username can only contain letters, numbers, and underscores");
 
+const defaultTwitterActions = ["like", "retweet", "quote", "reply"] as const
+
 /**
  * This schema defines all required/optional environment settings,
  * including new fields like TWITTER_SPACES_ENABLE.
@@ -69,6 +71,7 @@ export const twitterEnvSchema = z.object({
     POST_INTERVAL_MAX: z.number().int(),
     ENABLE_ACTION_PROCESSING: z.boolean(),
     ACTION_INTERVAL: z.number().int(),
+    TWITTER_ALLOWED_ACTIONS: z.array(z.enum(defaultTwitterActions)),
     POST_IMMEDIATELY: z.boolean(),
     TWITTER_SPACES_ENABLE: z.boolean().default(false),
     MAX_ACTIONS_PROCESSING: z.number().int(),
@@ -80,16 +83,17 @@ export const twitterEnvSchema = z.object({
 export type TwitterConfig = z.infer<typeof twitterEnvSchema>;
 
 /**
- * Helper to parse a comma-separated list of Twitter usernames
+ * Helper to parse a comma-separated list
  * (already present in your code).
  */
-function parseTargetUsers(targetUsersStr?: string | null): string[] {
-    if (!targetUsersStr?.trim()) {
-        return [];
+function parseCommaSeparatedList(targetStr: string, defaultValues?: readonly string[]): string[] {
+    if (!targetStr?.trim()) {
+        return defaultValues as string[];
     }
-    return targetUsersStr
+    
+    return targetStr
         .split(",")
-        .map((user) => user.trim())
+        .map((t) => t.trim())
         .filter(Boolean);
 }
 
@@ -168,9 +172,8 @@ export async function validateTwitterConfig(
             ),
 
             // comma separated string
-            TWITTER_TARGET_USERS: parseTargetUsers(
-                runtime.getSetting("TWITTER_TARGET_USERS") ||
-                    process.env.TWITTER_TARGET_USERS
+            TWITTER_TARGET_USERS: parseCommaSeparatedList(
+                runtime.getSetting("TWITTER_TARGET_USERS") || process.env.TWITTER_TARGET_USERS
             ),
 
             // int in minutes
@@ -193,6 +196,12 @@ export async function validateTwitterConfig(
                     runtime.getSetting("ENABLE_ACTION_PROCESSING") ||
                         process.env.ENABLE_ACTION_PROCESSING
                 ) ?? false,
+
+            // comma separated string
+            TWITTER_ALLOWED_ACTIONS: parseCommaSeparatedList(
+                runtime.getSetting("TWITTER_ALLOWED_ACTIONS") || process.env.TWITTER_ALLOWED_ACTIONS,
+                defaultTwitterActions
+            ),
 
             // init in minutes (min 1m)
             ACTION_INTERVAL: safeParseInt(
