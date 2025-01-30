@@ -75,9 +75,16 @@ export const twitterEnvSchema = z.object({
     POST_IMMEDIATELY: z.boolean(),
     TWITTER_SPACES_ENABLE: z.boolean().default(false),
     MAX_ACTIONS_PROCESSING: z.number().int(),
+    INTERACTIONS_TWEET_FETCH_LIMIT: z.number().int(),
+    SUBSCRIPTION_TWEET_FETCH_LIMIT: z.number().int(),
+    SUBSCRIPTION_ACTION_INTERVAL: z.number().int(),
+    ACTION_MAX_TIMELINES_FETCH: z.number().int(),
     ACTION_TIMELINE_TYPE: z
         .nativeEnum(ActionTimelineType)
         .default(ActionTimelineType.ForYou),
+    TWITTER_ALLOW_SEARCH_USERS_SUBSCRIPTION: z.boolean().default(false),
+    TWITTER_START_USERS_SUBSCRIPTION: z.boolean().default(false),
+    TWITTER_PROFILES_CHECK_LIMIT: z.number().int(),
 });
 
 export type TwitterConfig = z.infer<typeof twitterEnvSchema>;
@@ -232,6 +239,41 @@ export async function validateTwitterConfig(
             ACTION_TIMELINE_TYPE:
                 runtime.getSetting("ACTION_TIMELINE_TYPE") ||
                 process.env.ACTION_TIMELINE_TYPE,
+
+            TWITTER_ALLOW_SEARCH_USERS_SUBSCRIPTION:
+                runtime.getSetting("TWITTER_ALLOW_SEARCH_USERS_SUBSCRIPTION") ||
+                process.env.TWITTER_ALLOW_SEARCH_USERS_SUBSCRIPTION,
+
+            TWITTER_START_USERS_SUBSCRIPTION:
+                runtime.getSetting("TWITTER_START_USERS_SUBSCRIPTION") ||
+                process.env.TWITTER_START_USERS_SUBSCRIPTION,
+
+            INTERACTIONS_TWEET_FETCH_LIMIT: safeParseInt(
+                runtime.getSetting("INTERACTIONS_TWEET_FETCH_LIMIT:") ||
+                    process.env.INTERACTIONS_TWEET_FETCH_LIMIT,
+                20
+            ),
+            SUBSCRIPTION_TWEET_FETCH_LIMIT: safeParseInt(
+                runtime.getSetting("SUBSCRIPTION_TWEET_FETCH_LIMIT:") ||
+                    process.env.SUBSCRIPTION_TWEET_FETCH_LIMIT,
+                20
+            ),
+            // init in minutes (min 1m)
+            SUBSCRIPTION_ACTION_INTERVAL: safeParseInt(
+                runtime.getSetting("SUBSCRIPTION_ACTION_INTERVAL") ||
+                    process.env.SUBSCRIPTION_ACTION_INTERVAL,
+                10 // 10 minutes
+            ),
+            ACTION_MAX_TIMELINES_FETCH: safeParseInt(
+                runtime.getSetting("ACTION_MAX_TIMELINES_FETCH:") ||
+                    process.env.ACTION_MAX_TIMELINES_FETCH,
+                15
+            ),
+            TWITTER_PROFILES_CHECK_LIMIT: safeParseInt(
+                runtime.getSetting("TWITTER_PROFILES_CHECK_LIMIT:") ||
+                    process.env.TWITTER_PROFILES_CHECK_LIMIT,
+                22
+            ),
         };
 
         return twitterEnvSchema.parse(twitterConfig);

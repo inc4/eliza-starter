@@ -4,6 +4,7 @@ import { validateTwitterConfig, TwitterConfig } from "./environment.ts";
 import { TwitterInteractionClient } from "./interactions.ts";
 import { TwitterPostClient } from "./post.ts";
 import { TwitterSearchClient } from "./search.ts";
+import { TwitterSubscriptionClient } from "./subscription.ts";
 
 /**
  * A manager that orchestrates all specialized Twitter logic:
@@ -18,6 +19,7 @@ class TwitterManager {
     post: TwitterPostClient;
     search: TwitterSearchClient;
     interaction: TwitterInteractionClient;
+    subscription: TwitterSubscriptionClient;
 
     constructor(runtime: IAgentRuntime, twitterConfig: TwitterConfig) {
         // Pass twitterConfig to the base client
@@ -26,13 +28,24 @@ class TwitterManager {
         // Posting logic
         this.post = new TwitterPostClient(this.client, runtime);
 
-        // Optional search logic (enabled if TWITTER_SEARCH_ENABLE is true)
-        if (twitterConfig.TWITTER_SEARCH_ENABLE) {
+        if (
+            twitterConfig.TWITTER_SEARCH_ENABLE ||
+            twitterConfig.TWITTER_START_USERS_SUBSCRIPTION
+        ) {
             elizaLogger.warn("Twitter/X client running in a mode that:");
             elizaLogger.warn("1. violates consent of random users");
             elizaLogger.warn("2. burns your rate limit");
             elizaLogger.warn("3. can get your account banned");
             elizaLogger.warn("use at your own risk");
+        }
+
+        // Subscription logic
+        if (twitterConfig.TWITTER_START_USERS_SUBSCRIPTION) {
+            this.subscription = new TwitterSubscriptionClient(this.client, runtime)
+        }
+
+        // Optional search logic (enabled if TWITTER_SEARCH_ENABLE is true)
+        if (twitterConfig.TWITTER_SEARCH_ENABLE) {
             this.search = new TwitterSearchClient(this.client, runtime);
         }
 
@@ -55,6 +68,11 @@ export const TwitterClientInterface: Client = {
 
         // Start the posting loop
         await manager.post.start();
+
+        // Start the subscription logic
+        if (manager.subscription) {
+            await manager.subscription.start()
+        }
 
         // Start the search logic if it exists
         if (manager.search) {

@@ -27,8 +27,6 @@ import {
 import { State } from "@elizaos/core";
 import { ActionResponse } from "@elizaos/core";
 
-const MAX_TIMELINES_TO_FETCH = 15;
-
 const twitterPostTemplate = `
 # Areas of Expertise
 {{knowledge}}
@@ -687,7 +685,7 @@ export class TwitterPostClient {
             );
 
             const timelines = await this.client.fetchTimelineForActions(
-                MAX_TIMELINES_TO_FETCH
+                this.client.twitterConfig.ACTION_MAX_TIMELINES_FETCH
             );
             const maxActionsProcessing =
                 this.client.twitterConfig.MAX_ACTIONS_PROCESSING;

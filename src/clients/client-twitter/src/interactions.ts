@@ -124,7 +124,7 @@ export class TwitterInteractionClient {
             const mentionCandidates = (
                 await this.client.fetchSearchTweets(
                     `@${twitterUsername}`,
-                    20,
+                    this.client.twitterConfig.INTERACTIONS_TWEET_FETCH_LIMIT,
                     SearchMode.Latest
                 )
             ).tweets;
@@ -318,7 +318,12 @@ export class TwitterInteractionClient {
             return;
         }
 
-        if (!message.content.text) {
+        const removeShortenedTwitterUrl = (str: string) =>
+            str.replace(/https?:\/\/t\.co\/[a-zA-Z0-9]+/, "");
+
+        const textWithoutShortenedTweetUrl = removeShortenedTwitterUrl(message.content.text);
+
+        if (!textWithoutShortenedTweetUrl) { 
             elizaLogger.log("Skipping Tweet with no text", tweet.id);
             return { text: "", action: "IGNORE" };
         }

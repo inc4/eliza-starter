@@ -244,8 +244,17 @@ export class ClientBase extends EventEmitter {
 
     async fetchOwnPosts(count: number): Promise<Tweet[]> {
         elizaLogger.debug("fetching own posts");
-        const homeTimeline = await this.twitterClient.getUserTweets(
+
+        return await this.fetchUserPosts(
             this.profile.id,
+            count
+        )
+    }
+
+    async fetchUserPosts(username: string, count: number): Promise<Tweet[]> {
+        elizaLogger.debug("fetching user posts", username);
+        const homeTimeline = await this.twitterClient.getUserTweets(
+            username,
             count
         );
         return homeTimeline.tweets;
@@ -760,6 +769,57 @@ export class ClientBase extends EventEmitter {
         } catch (error) {
             console.error("Error fetching Twitter profile:", error);
             throw error;
+        }
+    }
+
+    async unfollowUser(username: string, userIdParam?: string): Promise<void> {
+        const auth = (this.twitterClient as any)['auth'];  // Access via type assertion
+        // Check if the user is logged in
+        if (!(await auth.isLoggedIn())) {
+            throw new Error('Must be logged in to follow users');
+        }
+
+        try {
+            const userId = userIdParam ? userIdParam : await this.twitterClient.getUserIdByScreenName(username);
+
+            const requestBody = {
+                include_profile_interstitial_type: '1',
+                skip_status: 'true',
+                user_id: userId,
+            };
+
+            // Prepare the headers
+            const headers = new Headers({
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Referer: `https://twitter.com/${username}`,
+                'X-Twitter-Active-User': 'yes',
+                'X-Twitter-Auth-Type': 'OAuth2Session',
+                'X-Twitter-Client-Language': 'en',
+                Authorization: `Bearer ${auth.bearerToken}`,
+            });
+
+            // Install auth headers
+            await auth.installTo(headers, 'https://api.twitter.com/1.1/friendships/destroy.json');
+
+            // Make the follow request using auth.fetch
+            const res = await auth.fetch(
+                'https://api.twitter.com/1.1/friendships/destroy.json',
+                {
+                    method: 'POST',
+                    headers,
+                    body: new URLSearchParams(requestBody).toString(),
+                    credentials: 'include',
+                },
+            );
+
+            if (!res.ok) {
+                throw new Error(`Failed to follow user: ${res.statusText}`);
+            }
+
+            const data = await res.json();
+            return data;
+        } catch (error) {
+            throw new Error(`Failed to get user ID: ${error}`);
         }
     }
 }
