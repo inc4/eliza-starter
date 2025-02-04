@@ -129,7 +129,7 @@ const checkPortAvailable = (port: number): Promise<boolean> => {
 };
 
 const startAgents = async () => {
-  const adminClient = new AdminClient(process.env.ADMIN_SECRET);
+  const adminClient = new AdminClient();
   let adminPort = parseInt(process.env.ADMIN_PORT || "3001");
 
   const directClient = new DirectClient();

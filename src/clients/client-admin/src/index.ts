@@ -69,15 +69,12 @@ export class AdminClient {
     public app: express.Application
     private agents: Map<string, AgentRuntime>; // container management
     private server: any; // Store server instance
-    private secret: string; // Admin secret
     public startAgent: Function; // Store startAgent functor
     public loadCharacterTryPath: Function; // Store loadCharacterTryPath functor
     public jsonToCharacter: Function; // Store jsonToCharacter functor
 
-    constructor(secret: string) {
+    constructor() {
         elizaLogger.log("AdminClient constructor");
-
-        this.secret = secret
 
         this.app = express();
         this.app.use(cors());
@@ -89,31 +86,8 @@ export class AdminClient {
         const apiRouter = createApiRouter(this.agents, this);
         this.app.use(apiRouter);
 
-        // Middleware to check for admin API key
-        const adminAuth = (req: ExpressRequest, res: ExpressResponse, next: NextFunction): void => {
-            try {
-              const token = req.header('Authorization')?.split(' ')[1]; // Expecting "Bearer <token>"
-          
-              if (!token) {
-                res.status(401).json({ message: 'Access denied. No token provided.' });
-                return 
-              }
-          
-              if (token !== this.secret) {
-                res.status(401).json({ message: 'Access denied.' });
-                return 
-              }
-          
-              next();
-            } catch (err) {
-                res.status(400).json({ message: 'Invalid token.' });
-                return 
-            }
-          };
-
         this.app.post(
             "/agents/:agentId/message",
-            adminAuth,
 
             async (req: express.Request, res: express.Response) => {
                 const agentId = req.params.agentId;
