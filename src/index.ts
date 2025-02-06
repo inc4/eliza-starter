@@ -90,7 +90,7 @@ async function startAgent(character: Character, directClient: DirectClient, admi
 
     await runtime.initialize();
 
-    runtime.clients = await initializeClients(character, runtime);
+    runtime.clients = await initializeClients(character, runtime, adminClient);
 
     directClient.registerAgent(runtime);
     adminClient.registerAgent(runtime);

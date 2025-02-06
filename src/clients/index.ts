@@ -2,11 +2,14 @@ import { AutoClientInterface } from "@elizaos/client-auto";
 import { DiscordClientInterface } from "@elizaos/client-discord";
 import { TelegramClientInterface } from "@elizaos/client-telegram";
 import { Character, IAgentRuntime } from "@elizaos/core";
-import { TwitterClientInterface } from "./client-twitter/src/index.ts";
+import { TwitterClientInterface, TwitterManager } from "./client-twitter/src/index.ts";
+
+import { AdminClient } from "./client-admin/src/index.ts";
 
 export async function initializeClients(
   character: Character,
-  runtime: IAgentRuntime
+  runtime: IAgentRuntime,
+  adminClient: AdminClient,
 ) {
   const clients = [];
   const clientTypes = character.clients?.map((str) => str.toLowerCase()) || [];
@@ -26,8 +29,11 @@ export async function initializeClients(
   }
 
   if (clientTypes.includes("twitter")) {
-    const twitterClients = await TwitterClientInterface.start(runtime);
-    clients.push(twitterClients);
+    const twitterManager = await TwitterClientInterface.start(runtime);
+
+    clients.push(twitterManager);
+
+    adminClient.registerTwitter(runtime.agentId, twitterManager as TwitterManager) // add here twitter manager
   }
 
   if (character.plugins?.length > 0) {

@@ -6,8 +6,6 @@ import express, {
 import cors from "cors";
 import bodyParser from "body-parser";
 import multer from "multer";
-import * as path from "path";
-import * as fs from "fs";
 import {
     type AgentRuntime,
     messageCompletionFooter,
@@ -22,28 +20,14 @@ import {
     generateMessageResponse,
     ModelClass
 } from "@elizaos/core"
+import { DEFAULT_MAX_TWEET_LENGTH } from "../../client-twitter/src/environment.ts";
+import { validatePostTweetSchema } from "./validations.ts";
 import { createApiRouter } from "./api.ts";
 import { string } from "zod";
-
-
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(process.cwd(), "data", "uploads");
-        // Create the directory if it doesn't exist
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        cb(null, `${uniqueSuffix}-${file.originalname}`);
-    },
-});
-
-// some people have more memory than disk.io
-const upload = multer({ storage /*: multer.memoryStorage() */ });
+import { validateRequest } from "./middleware.ts";
+import { TwitterManager } from "../../client-twitter/src/index.ts";
+import { ClientBase } from "../../client-twitter/src/base.ts"
+import { BaseClient, range } from "discord.js";
 
 
 export const messageHandlerTemplate =
@@ -68,6 +52,7 @@ About {{agentName}}:
 export class AdminClient {
     public app: express.Application
     private agents: Map<string, AgentRuntime>; // container management
+    private twitterManagers: Map<string, TwitterManager>
     private server: any; // Store server instance
     public startAgent: Function; // Store startAgent functor
     public loadCharacterTryPath: Function; // Store loadCharacterTryPath functor
@@ -79,6 +64,7 @@ export class AdminClient {
         this.app = express();
         this.app.use(cors());
         this.agents = new Map();
+        this.twitterManagers = new Map();
 
         this.app.use(bodyParser.json());
         this.app.use(bodyParser.urlencoded({ extended: true }));
@@ -86,100 +72,119 @@ export class AdminClient {
         const apiRouter = createApiRouter(this.agents, this);
         this.app.use(apiRouter);
 
-        this.app.post(
-            "/agents/:agentId/message",
+        this.app.post("/agents/:agentId/message", this.generateMessage.bind(this));
+        this.app.post("/twitter/:agentId/tweet", validateRequest(validatePostTweetSchema), this.postTweet.bind(this));
+    }
 
-            async (req: express.Request, res: express.Response) => {
-                const agentId = req.params.agentId;
-                const roomId = stringToUuid("admin-room-" + agentId);
-                const userId = stringToUuid("admin");
+    private async generateMessage(req: express.Request, res: express.Response) {
+        const agentId = req.params.agentId;
+        const roomId = stringToUuid("admin-room-" + agentId);
+        const userId = stringToUuid("admin");
 
-                let runtime = this.agents.get(agentId);
+        let runtime = this.agents.get(agentId);
 
-                // if runtime is null, look for runtime with the same name
-                if (!runtime) {
-                    runtime = Array.from(this.agents.values()).find(
-                        (a) =>
-                            a.character.name.toLowerCase() ===
-                            agentId.toLowerCase()
-                    );
-                }
+        // if runtime is null, look for runtime with the same name
+        if (!runtime) {
+            runtime = Array.from(this.agents.values()).find(
+                (a) =>
+                    a.character.name.toLowerCase() ===
+                    agentId.toLowerCase()
+            );
+        }
 
-                if (!runtime) {
-                    res.status(404).send("Agent not found");
-                    return;
-                }
+        if (!runtime) {
+            res.status(404).send("Agent not found");
+            return;
+        }
 
-                const task = req.body.task
-                const instructions = req.body.instructions
+        const task = req.body.task
+        const instructions = req.body.instructions
 
-                if (!task || !instructions) {
-                    res.status(400).send(
-                        "Invalid body"
-                    );
-                    return;
-                }
+        if (!task || !instructions) {
+            res.status(400).send(
+                "Invalid body"
+            );
+            return;
+        }
 
-                const messageId = stringToUuid(Date.now().toString());
+        const messageId = stringToUuid(Date.now().toString());
 
-                const attachments: Media[] = [];
+        const attachments: Media[] = [];
 
-                const content: Content = {
-                    text: `task: ${task}, instructions: ${instructions}`,
-                    attachments,
-                    source: "direct",
-                    inReplyTo: undefined,
-                };
+        const content: Content = {
+            text: `task: ${task}, instructions: ${instructions}`,
+            attachments,
+            source: "direct",
+            inReplyTo: undefined,
+        };
 
-                const userMessage = {
-                    content,
-                    userId,
-                    roomId,
-                    agentId: runtime.agentId,
-                };
+        const userMessage = {
+            content,
+            userId,
+            roomId,
+            agentId: runtime.agentId,
+        };
 
-                const memory: Memory = {
-                    id: stringToUuid(messageId + "-" + userId),
-                    ...userMessage,
-                    agentId: runtime.agentId,
-                    userId,
-                    roomId,
-                    content,
-                    createdAt: Date.now(),
-                };
-                
-                let state = await runtime.composeState(userMessage, {
-                    agentName: runtime.character.name,
-                    task: req.body.task,
-                    instructions: req.body.instructions
-                });
+        const memory: Memory = {
+            id: stringToUuid(messageId + "-" + userId),
+            ...userMessage,
+            agentId: runtime.agentId,
+            userId,
+            roomId,
+            content,
+            createdAt: Date.now(),
+        };
+        
+        let state = await runtime.composeState(userMessage, {
+            agentName: runtime.character.name,
+            task: req.body.task,
+            instructions: req.body.instructions
+        });
 
-                const context = composeContext({
-                    state,
-                    template: messageHandlerTemplate,
-                });
+        const context = composeContext({
+            state,
+            template: messageHandlerTemplate,
+        });
 
-                const response = await generateMessageResponse({
-                    runtime: runtime,
-                    context,
-                    modelClass: ModelClass.LARGE,
-                });
+        const response = await generateMessageResponse({
+            runtime: runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+        });
 
-                if (!response) {
-                    res.status(500).send(
-                        "No response from generateMessageResponse"
-                    );
-                    return;
-                }
+        if (!response) {
+            res.status(500).send(
+                "No response from generateMessageResponse"
+            );
+            return;
+        }
 
-                // No need for action.
-                response.action = undefined;
+        // No need for action.
+        response.action = undefined;
 
-                await runtime.evaluate(memory, state);
+        await runtime.evaluate(memory, state);
 
-                res.json([response])
-            }
-        );
+        res.json([response])
+    }
+
+    private async postTweet(req: express.Request, res: express.Response) {
+        const agentId = req.params.agentId;
+
+        let twitter = this.twitterManagers.get(agentId)
+
+        if (!twitter) {
+            res.status(404).send("Agent not found");
+            return;
+        }
+
+        try {
+            twitter.client.sendStandardTweet(req.body.content)
+        } catch {
+            res.status(404).send("Agent not found");
+            return;
+        }
+
+        res.json([])
     }
 
     public unregisterAgent(runtime: AgentRuntime) {
@@ -188,6 +193,10 @@ export class AdminClient {
 
     public registerAgent(runtime: AgentRuntime) {
         this.agents.set(runtime.agentId, runtime);
+    }
+
+    public registerTwitter(agentId: string, twitterManager: TwitterManager) {
+        this.twitterManagers.set(agentId, twitterManager)
     }
 
     public start(port: number) {

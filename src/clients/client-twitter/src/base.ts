@@ -97,6 +97,27 @@ export class ClientBase extends EventEmitter {
 
     profile: TwitterProfile | null;
 
+    async sendStandardTweet(
+        content: string,
+        tweetId?: string
+    ) {
+        try {
+            const standardTweetResult = await this.requestQueue.add(
+                async () =>
+                    await this.twitterClient.sendTweet(content, tweetId)
+            );
+            const body = await standardTweetResult.json();
+            if (!body?.data?.create_tweet?.tweet_results?.result) {
+                console.error("Error sending tweet; Bad response:", body);
+                return;
+            }
+            return body.data.create_tweet.tweet_results.result;
+        } catch (error) {
+            elizaLogger.error("Error sending standard Tweet:", error);
+            throw error;
+        }
+    }
+
     async cacheTweet(tweet: Tweet): Promise<void> {
         if (!tweet) {
             console.warn("Tweet is undefined, skipping cache");

@@ -14,7 +14,7 @@ import { TwitterSubscriptionClient } from "./subscription.ts";
  * - interaction: handling mentions, replies
  * - space: launching and managing Twitter Spaces (optional)
  */
-class TwitterManager {
+export class TwitterManager {
     client: ClientBase;
     post: TwitterPostClient;
     search: TwitterSearchClient;

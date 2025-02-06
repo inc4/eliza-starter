@@ -26,6 +26,7 @@
     "agent-twitter-client": "^0.0.18",
     "@tavily/core": "0.0.2",
     "express": "4.21.1",
+    "express-validator": "7.2.1",
     "@types/express": "5.0.0",
     "@types/cors": "2.8.17",
     "@types/body-parser": "1.19.5",
