@@ -23,7 +23,6 @@ import {
   parseArguments,
 } from "./config/index.ts";
 import { initializeDatabase } from "./database/index.ts";
-import { AdminClient } from "./clients/client-admin/src/index.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,7 +68,7 @@ export function createAgent(
   });
 }
 
-async function startAgent(character: Character, directClient: DirectClient, adminClient: AdminClient) {
+async function startAgent(character: Character, directClient: DirectClient) {
   try {
     character.id ??= stringToUuid(character.name);
     character.username ??= character.name;
@@ -90,10 +89,9 @@ async function startAgent(character: Character, directClient: DirectClient, admi
 
     await runtime.initialize();
 
-    runtime.clients = await initializeClients(character, runtime, adminClient);
+    runtime.clients = await initializeClients(character, runtime, directClient);
 
     directClient.registerAgent(runtime);
-    adminClient.registerAgent(runtime);
 
     // report to console
     elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`);
@@ -129,9 +127,6 @@ const checkPortAvailable = (port: number): Promise<boolean> => {
 };
 
 const startAgents = async () => {
-  const adminClient = new AdminClient();
-  let adminPort = parseInt(process.env.ADMIN_PORT || "3001");
-
   const directClient = new DirectClient();
   let serverPort = parseInt(settings.SERVER_PORT || "3000");
 
@@ -147,7 +142,7 @@ const startAgents = async () => {
   console.log("characters", characters);
   try {
     for (const character of characters) {
-      await startAgent(character, directClient as DirectClient, adminClient as AdminClient);
+      await startAgent(character, directClient as DirectClient);
     }
   } catch (error) {
     elizaLogger.error("Error starting agents:", error);
@@ -161,11 +156,10 @@ const startAgents = async () => {
   // upload some agent functionality into directClient
   directClient.startAgent = async (character: Character) => {
     // wrap it so we don't have to inject directClient later
-    return startAgent(character, directClient, adminClient);
+    return startAgent(character, directClient);
   };
 
   directClient.start(serverPort);
-  adminClient.start(adminPort);
 
   if (serverPort !== parseInt(settings.SERVER_PORT || "3000")) {
     elizaLogger.log(`Server started on alternate port ${serverPort}`);

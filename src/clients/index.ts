@@ -3,13 +3,15 @@ import { DiscordClientInterface } from "@elizaos/client-discord";
 import { TelegramClientInterface } from "@elizaos/client-telegram";
 import { Character, IAgentRuntime } from "@elizaos/core";
 import { TwitterClientInterface, TwitterManager } from "./client-twitter/src/index.ts";
+import { DirectClient } from "@elizaos/client-direct";
+import { validateRequest } from "./client-twitter/src/middleware.ts"
+import { validatePostTweetSchema } from "./client-twitter/src/validations.ts"
 
-import { AdminClient } from "./client-admin/src/index.ts";
 
 export async function initializeClients(
   character: Character,
   runtime: IAgentRuntime,
-  adminClient: AdminClient,
+  directClient: DirectClient,
 ) {
   const clients = [];
   const clientTypes = character.clients?.map((str) => str.toLowerCase()) || [];
@@ -30,10 +32,10 @@ export async function initializeClients(
 
   if (clientTypes.includes("twitter")) {
     const twitterManager = await TwitterClientInterface.start(runtime);
-
     clients.push(twitterManager);
-
-    adminClient.registerTwitter(runtime.agentId, twitterManager as TwitterManager) // add here twitter manager
+    const manager = twitterManager as TwitterManager;
+    directClient.app.post("/agents/:agentId/message", manager.generateMessage.bind(manager));
+    directClient.app.post("/twitter/:agentId/tweet", validateRequest(validatePostTweetSchema), manager.postTweet.bind(manager));
   }
 
   if (character.plugins?.length > 0) {

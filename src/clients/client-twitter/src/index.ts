@@ -1,10 +1,30 @@
-import { Client, elizaLogger, IAgentRuntime } from "@elizaos/core";
+import { Client, elizaLogger, IAgentRuntime, Content, Memory, Media, ModelClass, composeContext, stringToUuid, generateMessageResponse, messageCompletionFooter } from "@elizaos/core";
 import { ClientBase } from "./base.ts";
 import { validateTwitterConfig, TwitterConfig } from "./environment.ts";
 import { TwitterInteractionClient } from "./interactions.ts";
 import { TwitterPostClient } from "./post.ts";
 import { TwitterSearchClient } from "./search.ts";
 import { TwitterSubscriptionClient } from "./subscription.ts";
+import { Request, Response } from "express";
+
+
+export const messageHandlerTemplate =
+    `# Knowledge
+{{knowledge}}
+
+# Task: {{task}} for the character {{agentName}}.
+About {{agentName}}:
+{{bio}}
+{{lore}}
+
+{{providers}}
+
+{{messageDirections}}
+
+{{recentMessages}}
+
+# Instructions: Write the next message for {{agentName}}. {{instructions}}
+` + messageCompletionFooter;
 
 /**
  * A manager that orchestrates all specialized Twitter logic:
@@ -20,6 +40,7 @@ export class TwitterManager {
     search: TwitterSearchClient;
     interaction: TwitterInteractionClient;
     subscription: TwitterSubscriptionClient;
+    runtime: IAgentRuntime;
 
     constructor(runtime: IAgentRuntime, twitterConfig: TwitterConfig) {
         // Pass twitterConfig to the base client
@@ -51,6 +72,93 @@ export class TwitterManager {
 
         // Mentions and interactions
         this.interaction = new TwitterInteractionClient(this.client, runtime);
+        this.runtime = runtime;
+    }
+
+    async postTweet(req: Request, res: Response) {
+        try {
+            this.client.sendStandardTweet(req.body.content)
+        } catch {
+            res.status(404).send("Agent not found");
+            return;
+        }
+
+        res.json([])
+    }
+
+    async generateMessage(req: Request, res: Response) {
+        const agentId = req.params.agentId;
+        const roomId = stringToUuid("admin-room-" + agentId);
+        const userId = stringToUuid("admin");
+
+        const task = req.body.task
+        const instructions = req.body.instructions
+
+        if (!task || !instructions) {
+            res.status(400).send(
+                "Invalid body"
+            );
+            return;
+        }
+
+        const messageId = stringToUuid(Date.now().toString());
+
+        const attachments: Media[] = [];
+
+        const content: Content = {
+            text: `task: ${task}, instructions: ${instructions}`,
+            attachments,
+            source: "direct",
+            inReplyTo: undefined,
+        };
+
+        const userMessage = {
+            content,
+            userId,
+            roomId,
+            agentId: this.runtime.agentId,
+        };
+
+        const memory: Memory = {
+            id: stringToUuid(messageId + "-" + userId),
+            ...userMessage,
+            agentId: this.runtime.agentId,
+            userId,
+            roomId,
+            content,
+            createdAt: Date.now(),
+        };
+        
+        let state = await this.runtime.composeState(userMessage, {
+            agentName: this.runtime.character.name,
+            task: req.body.task,
+            instructions: req.body.instructions
+        });
+
+        const context = composeContext({
+            state,
+            template: messageHandlerTemplate,
+        });
+
+        const response = await generateMessageResponse({
+            runtime: this.runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+        });
+
+        if (!response) {
+            res.status(500).send(
+                "No response from generateMessageResponse"
+            );
+            return;
+        }
+
+        // No need for action.
+        response.action = undefined;
+
+        await this.runtime.evaluate(memory, state);
+
+        res.json([response])
     }
 }
 
