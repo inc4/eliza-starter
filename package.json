@@ -1,6 +1,6 @@
 {
   "name": "@elizaos/eliza-starter",
-  "version": "0.1.1",
+  "version": "0.1.9",
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
@@ -11,19 +11,19 @@
     "stop:service:all": "pm2 stop all"
   },
   "dependencies": {
-    "@elizaos/core": "0.1.8",
-    "@elizaos/adapter-postgres": "0.1.8",
-    "@elizaos/adapter-sqlite": "0.1.8",
-    "@elizaos/client-auto": "0.1.8",
-    "@elizaos/client-direct": "0.1.8",
-    "@elizaos/client-discord": "0.1.8",
-    "@elizaos/client-telegram": "0.1.8",
-    "@elizaos/plugin-bootstrap": "0.1.8",
-    "@elizaos/plugin-node": "0.1.8",
-    "@elizaos/plugin-solana": "0.1.8",
-    "@elizaos/plugin-tee-log": "0.1.8",
-    "@elizaos/plugin-tee": "0.1.8",
-    "agent-twitter-client": "^0.0.18",
+    "@elizaos/adapter-postgres": "0.1.9",
+    "@elizaos/adapter-sqlite": "0.1.9",
+    "@elizaos/client-auto": "0.1.9",
+    "@elizaos/client-direct": "0.1.9",
+    "@elizaos/client-discord": "0.1.9",
+    "@elizaos/client-telegram": "0.1.9",
+    "@elizaos/client-twitter": "0.1.9",
+    "@elizaos/core": "0.1.9",
+    "@elizaos/plugin-bootstrap": "0.1.9",
+    "@elizaos/plugin-image-generation": "0.1.9",
+    "@elizaos/plugin-node": "0.1.9",
+    "@elizaos/plugin-solana": "0.1.9",
+    "@elizaos/plugin-starknet": "0.1.9",
     "@tavily/core": "0.0.2",
     "express": "4.21.1",
     "express-validator": "7.2.1",
@@ -60,6 +60,7 @@
     "ts-node": "10.9.2",
     "@types/multer": "^1.4.12",
     "tsup": "8.3.5",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "pm2": "5.4.3" 
   }
 }
