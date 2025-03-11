@@ -6,6 +6,7 @@ import { TwitterClientInterface, TwitterManager } from "./client-twitter/src/ind
 import { DirectClient } from "@elizaos/client-direct";
 import { validateRequest } from "./client-twitter/src/middleware.ts"
 import { validatePostTweetSchema } from "./client-twitter/src/validations.ts"
+import { AiManager} from './defaultAiManager.ts'
 
 
 export async function initializeClients(
@@ -15,6 +16,12 @@ export async function initializeClients(
 ) {
   const clients = [];
   const clientTypes = character.clients?.map((str) => str.toLowerCase()) || [];
+
+  const AiDefaultManager = new AiManager(runtime);
+
+  directClient.app.post("/agents/:agentId/message", (req, res) => {
+        return AiDefaultManager.generateMessage(req, res)
+  });
 
   if (clientTypes.includes("auto")) {
     const autoClient = await AutoClientInterface.start(runtime);
@@ -34,7 +41,6 @@ export async function initializeClients(
     const twitterManager = await TwitterClientInterface.start(runtime);
     clients.push(twitterManager);
     const manager = twitterManager as TwitterManager;
-    directClient.app.post("/agents/:agentId/message", manager.generateMessage.bind(manager));
     directClient.app.post("/twitter/:agentId/tweet", validateRequest(validatePostTweetSchema), manager.postTweet.bind(manager));
   }
 
