@@ -26,6 +26,8 @@ import {
 } from "discord.js";
 import { State } from "@elizaos/core";
 import { ActionResponse } from "@elizaos/core";
+import {CerebroClient} from "../../client-cerebro/cerebroClient.ts";
+import {CerebroClientInterface} from "../../client-cerebro/client.ts";
 
 const twitterPostTemplate = `
 # Areas of Expertise
@@ -45,7 +47,10 @@ const twitterPostTemplate = `
 # Task: Generate a post in the voice and style and perspective of {{agentName}} @{{twitterUserName}}.
 Write a post that is {{adjective}} about {{topic}} (without mentioning {{topic}} directly), from the perspective of {{agentName}}. Do not add commentary or acknowledge this request, just write the post.
 Your response should be 1, 2, or 3 sentences (choose the length at random).
-Your response should not contain any questions. Brief, concise statements only. The total character count MUST be less than {{maxTweetLength}}. No emojis. Use \\n\\n (double spaces) between statements if there are multiple statements in your response.`;
+Your response should not contain any questions. Brief, concise statements only. The total character count MUST be less than {{maxTweetLength}}. No emojis. Use \\n\\n (double spaces) between statements if there are multiple statements in your response.
+
+# You can use additional information for post generation from this tweet summary (summary of tweets from the last 24 hours):
+{{sentiment}}`;
 
 export const twitterActionTemplate =
     `
@@ -273,9 +278,11 @@ export class TwitterPostClient {
             await this.generateNewTweet();
         }
 
-        // Only start tweet generation loop if not in dry run mode
-        generateNewTweetLoop();
-        elizaLogger.log("Tweet generation loop started");
+        if (this.client.twitterConfig.TWITTER_AUTO_POST) {
+           // Only start tweet generation loop if not in dry run mode
+            generateNewTweetLoop();
+            elizaLogger.log("Tweet generation loop started");
+        }
 
         if (this.client.twitterConfig.ENABLE_ACTION_PROCESSING) {
             processActionsLoop().catch((error) => {
@@ -470,6 +477,20 @@ export class TwitterPostClient {
                 "twitter"
             );
 
+            let sentiment = "";
+
+            const cerebroClient: CerebroClient = await CerebroClientInterface.start(this.runtime);
+
+            // If cerebro service is activated.
+            if (cerebroClient.config.CEREBRO_ENABLED) {
+                // Get tweet summary (24 hours tweets).
+                const tweetSummary = await cerebroClient.getTweetSummary();
+
+                if (tweetSummary.data !== null) {
+                    sentiment = tweetSummary.data.text;
+                }
+            }
+
             const topics = this.runtime.character.topics.join(", ");
 
             const state = await this.runtime.composeState(
@@ -484,6 +505,7 @@ export class TwitterPostClient {
                 },
                 {
                     twitterUserName: this.client.profile.username,
+                    sentiment: sentiment,
                 }
             );
 

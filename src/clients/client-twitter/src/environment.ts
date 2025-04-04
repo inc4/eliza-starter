@@ -39,6 +39,7 @@ export const twitterEnvSchema = z.object({
     TWITTER_RETRY_LIMIT: z.number().int(),
     TWITTER_POLL_INTERVAL: z.number().int(),
     TWITTER_TARGET_USERS: z.array(twitterUsernameSchema).default([]),
+    TWITTER_AUTO_POST: z.boolean(),
     // I guess it's possible to do the transformation with zod
     // not sure it's preferable, maybe a readability issue
     // since more people will know js/ts than zod
@@ -223,6 +224,9 @@ export async function validateTwitterConfig(
                     runtime.getSetting("POST_IMMEDIATELY") ||
                         process.env.POST_IMMEDIATELY
                 ) ?? false,
+
+            TWITTER_AUTO_POST: parseBooleanFromText(String(runtime.getSetting("TWITTER_AUTO_POST"))) ||
+                parseBooleanFromText(process.env.TWITTER_AUTO_POST),
 
             TWITTER_SPACES_ENABLE:
                 parseBooleanFromText(
