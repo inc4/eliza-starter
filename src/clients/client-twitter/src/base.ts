@@ -99,12 +99,16 @@ export class ClientBase extends EventEmitter {
 
     async sendStandardTweet(
         content: string,
-        tweetId?: string
+        mediaData?: {
+            data: Buffer;
+            mediaType: string;
+        }[],
+        tweetId?: string,
     ) {
         try {
             const standardTweetResult = await this.requestQueue.add(
                 async () =>
-                    await this.twitterClient.sendTweet(content, tweetId)
+                    await this.twitterClient.sendTweet(content, tweetId, mediaData)
             );
             const body = await standardTweetResult.json();
             if (!body?.data?.create_tweet?.tweet_results?.result) {

@@ -77,9 +77,18 @@ export class TwitterManager {
 
     async postTweet(req: Request, res: Response) {
         try {
-            this.client.sendStandardTweet(req.body.content)
+            if (req.body.mediaData && req.body.mediaData.length > 0) {
+                req.body.mediaData = req.body.mediaData.map(async ({ mediaUrl, mediaType }) => {
+                    const image = await fetch(mediaUrl);
+                    const imageBlob = await image.blob();
+                    const imageBuffer = await imageBlob.arrayBuffer();
+                    return {data: Buffer.from(imageBuffer), mediaType: mediaType}
+                });
+                req.body.mediaData = await Promise.all(req.body.mediaData);
+            }
+            this.client.sendStandardTweet(req.body.content, req.body.mediaData);
         } catch {
-            res.status(404).send("Agent not found");
+            res.status(404).send("Agent not founds");
             return;
         }
 
