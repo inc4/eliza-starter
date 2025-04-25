@@ -23,6 +23,7 @@ const twitterUsernameSchema = z
     }, "An X Username can only contain letters, numbers, and underscores");
 
 const defaultTwitterActions = ["like", "retweet", "quote", "reply"] as const
+const emptyTwitterActions = [] as const
 
 /**
  * This schema defines all required/optional environment settings,
@@ -208,7 +209,7 @@ export async function validateTwitterConfig(
             // comma separated string
             TWITTER_ALLOWED_ACTIONS: parseCommaSeparatedList(
                 runtime.getSetting("TWITTER_ALLOWED_ACTIONS") || process.env.TWITTER_ALLOWED_ACTIONS,
-                defaultTwitterActions
+                emptyTwitterActions
             ),
 
             // init in minutes (min 1m)
