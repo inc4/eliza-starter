@@ -77,6 +77,7 @@ export const twitterEnvSchema = z.object({
     POST_IMMEDIATELY: z.boolean(),
     TWITTER_SPACES_ENABLE: z.boolean().default(false),
     MAX_ACTIONS_PROCESSING: z.number().int(),
+    TWITTER_INTERACTIONS_ENABLE: z.boolean().default(false),
     INTERACTIONS_TWEET_FETCH_LIMIT: z.number().int(),
     SUBSCRIPTION_TWEET_FETCH_LIMIT: z.number().int(),
     SUBSCRIPTION_ACTION_INTERVAL: z.number().int(),
@@ -252,6 +253,11 @@ export async function validateTwitterConfig(
             TWITTER_START_USERS_SUBSCRIPTION:
                 runtime.getSetting("TWITTER_START_USERS_SUBSCRIPTION") ||
                 process.env.TWITTER_START_USERS_SUBSCRIPTION,
+
+            TWITTER_INTERACTIONS_ENABLE: parseBooleanFromText(
+                runtime.getSetting("TWITTER_INTERACTIONS_ENABLE") ||
+                process.env.TWITTER_INTERACTIONS_ENABLE
+            ) ?? false,
 
             INTERACTIONS_TWEET_FETCH_LIMIT: safeParseInt(
                 runtime.getSetting("INTERACTIONS_TWEET_FETCH_LIMIT:") ||

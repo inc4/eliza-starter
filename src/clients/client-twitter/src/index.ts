@@ -197,7 +197,9 @@ export const TwitterClientInterface: Client = {
         }
 
         // Start interactions (mentions, replies)
-        await manager.interaction.start();
+        if (twitterConfig.TWITTER_INTERACTIONS_ENABLE) {
+            await manager.interaction.start();
+        }
 
         return manager;
     },
