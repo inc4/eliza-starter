@@ -254,10 +254,8 @@ export async function validateTwitterConfig(
                 runtime.getSetting("TWITTER_START_USERS_SUBSCRIPTION") ||
                 process.env.TWITTER_START_USERS_SUBSCRIPTION,
 
-            TWITTER_INTERACTIONS_ENABLE: parseBooleanFromText(
-                runtime.getSetting("TWITTER_INTERACTIONS_ENABLE") ||
-                process.env.TWITTER_INTERACTIONS_ENABLE
-            ) ?? false,
+            TWITTER_INTERACTIONS_ENABLE: parseBooleanFromText(String(runtime.getSetting("TWITTER_INTERACTIONS_ENABLE"))) ||
+                parseBooleanFromText(process.env.TWITTER_INTERACTIONS_ENABLE),
 
             INTERACTIONS_TWEET_FETCH_LIMIT: safeParseInt(
                 runtime.getSetting("INTERACTIONS_TWEET_FETCH_LIMIT:") ||
