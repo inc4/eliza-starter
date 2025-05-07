@@ -22,3 +22,8 @@ export interface ResponseData {
     data: TweetSummary | TrendSummary | PersonalizedTrendSummary | null
     error: ErrorResponseData | null
 }
+
+export interface SendTweetsResponse{A
+    next: boolean | null
+    error: ErrorResponseData | null
+}

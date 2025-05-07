@@ -7,6 +7,7 @@ import { DirectClient } from "@elizaos/client-direct";
 import { validateRequest } from "./client-twitter/src/middleware.ts"
 import { validatePostTweetSchema } from "./client-twitter/src/validations.ts"
 import { AiManager} from './defaultAiManager.ts'
+import { InitCron } from './cron.ts'
 
 
 export async function initializeClients(
@@ -41,6 +42,7 @@ export async function initializeClients(
     const twitterManager = await TwitterClientInterface.start(runtime);
     clients.push(twitterManager);
     const manager = twitterManager as TwitterManager;
+    await InitCron(manager)
     directClient.app.post("/twitter/:agentId/tweet", validateRequest(validatePostTweetSchema), manager.postTweet.bind(manager));
   }
 

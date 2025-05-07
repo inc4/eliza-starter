@@ -1,6 +1,6 @@
 import { type IAgentRuntime, type Client, elizaLogger } from "@elizaos/core";
 import {CerebroConfig, validateCerebroConfig} from "./environment.ts";
-import {PersonalizedTrendSummary, ResponseData, TrendSummary, TweetSummary} from "./type.ts";
+import {PersonalizedTrendSummary, ResponseData, TrendSummary, TweetSummary, SendTweetsResponse} from "./type.ts";
 
 export class CerebroClient  {
     private runtime: IAgentRuntime;
@@ -34,15 +34,34 @@ export class CerebroClient  {
         return this._call('/personalized-trend/summary')
     }
 
-    private async _call(path: string): Promise<ResponseData> {
+    public async sendTweets(body:any): Promise<SendTweetsResponse> {
+        const headers: Headers = new Headers();
+        const path =  "/tweet/user";
+        headers.set('Content-Type', 'application/json');
+        headers.set('Accept', 'application/json;')
+        headers.set('Authorization', 'Bearer ' + this.config.CEREBRO_API_KEY);
+
+        const request: RequestInfo = new Request(this.config.CEREBRO_BASE_URL + path, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(body),
+        });
+
+        return fetch(request)
+            .then(res => res.json())
+            .then(res => res as SendTweetsResponse)
+    }
+
+    private async _call(path: string, method: string = "GET", body?: any): Promise<ResponseData> {
         const headers: Headers = new Headers();
         headers.set('Content-Type', 'application/json');
         headers.set('Accept', 'application/json;')
         headers.set('Authorization', 'Bearer ' + this.config.CEREBRO_API_KEY);
 
         const request: RequestInfo = new Request(this.config.CEREBRO_BASE_URL + path, {
-            method: 'GET',
-            headers: headers
+            method: method,
+            headers: headers,
+            body: JSON.stringify(body),
         });
 
         return fetch(request)

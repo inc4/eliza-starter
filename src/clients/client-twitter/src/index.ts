@@ -95,6 +95,17 @@ export class TwitterManager {
         res.json([])
     }
 
+    async getFollowingTweets(req: Request, res: Response) {
+        try {
+            const timeline = await this.client.twitterClient.fetchFollowingTimeline(10, []);
+            res.json(timeline);
+            return;
+        } catch(e) {
+            res.status(404).send(e);
+            return;
+        }
+    }
+
     async generateMessage(req: Request, res: Response) {
         const agentId = req.params.agentId;
         const roomId = stringToUuid("admin-room-" + agentId);
@@ -137,7 +148,7 @@ export class TwitterManager {
             content,
             createdAt: Date.now(),
         };
-        
+
         let state = await this.runtime.composeState(userMessage, {
             agentName: this.runtime.character.name,
             task: req.body.task,
